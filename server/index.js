@@ -704,7 +704,7 @@ const server = createServer(async (request, response) => {
           VALUES (?, ?, ?, 'student', ?, ?, ?, ?)
         `).run(id, email, profile.name, salt, safePasswordHash(body.password, salt), JSON.stringify(profile), now())
       } catch (error) {
-        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') throw new HttpError(409, 'An account with this email already exists.')
+        if (error.errcode === 2067) throw new HttpError(409, 'An account with this email already exists.')
         throw error
       }
       const session = makeSession(id)

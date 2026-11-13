@@ -1,5 +1,15 @@
 const API_BASE = '/api'
 
+function errorMessage(value, fallback) {
+  if (typeof value === 'string' && value.trim()) return value
+  if (value && typeof value === 'object') {
+    if (typeof value.message === 'string' && value.message.trim()) return value.message
+    if (typeof value.error === 'string' && value.error.trim()) return value.error
+    if (value.error && typeof value.error === 'object') return errorMessage(value.error, fallback)
+  }
+  return fallback
+}
+
 export async function api(path, { token, ...options } = {}) {
   const headers = new Headers(options.headers || {})
   headers.set('Accept', 'application/json')
@@ -18,7 +28,7 @@ export async function api(path, { token, ...options } = {}) {
 
   const result = await response.json().catch(() => ({}))
   if (!response.ok) {
-    const error = new Error(result.error || `Request failed (${response.status}).`)
+    const error = new Error(errorMessage(result?.error, `Request failed (${response.status}).`))
     error.status = response.status
     throw error
   }
@@ -37,7 +47,7 @@ export async function download(path, { token } = {}) {
   }
   if (!response.ok) {
     const result = await response.json().catch(() => ({}))
-    throw new Error(result.error || `Download failed (${response.status}).`)
+    throw new Error(errorMessage(result?.error, `Download failed (${response.status}).`))
   }
   return response.blob()
 }

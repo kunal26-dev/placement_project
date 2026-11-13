@@ -64,6 +64,33 @@ after(async () => {
 })
 
 test('student and placement-cell workflows persist and enforce access rules', async () => {
+  const registrationPayload = {
+    name: 'New Test Student',
+    email: 'new-student@university.edu',
+    password: 'StudentTest@123',
+    profile: {
+      branch: 'Computer Science & Engineering',
+      cgpa: 8,
+      graduationYear: 2028,
+      backlogs: 0,
+      targetRole: 'Software Engineer',
+      skills: ['Java'],
+    },
+  }
+  const accountRegistration = await api('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(registrationPayload),
+  })
+  assert.equal(accountRegistration.response.status, 201)
+  assert.equal(accountRegistration.body.user.email, registrationPayload.email)
+
+  const duplicateRegistration = await api('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(registrationPayload),
+  })
+  assert.equal(duplicateRegistration.response.status, 409)
+  assert.equal(duplicateRegistration.body.error, 'An account with this email already exists.')
+
   const login = await api('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email: 'student@university.edu', password: 'Student@123' }),
