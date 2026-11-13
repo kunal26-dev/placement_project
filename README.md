@@ -23,6 +23,19 @@ The local database is created at `data/placement.db` the first time the API star
 To run the API and frontend separately, use `npm run server` and `npm run dev` in two terminals. To build the frontend, run `npm run build`; to run the API smoke tests, run `npm test`.
 For a production-style local run, build with `npm run build` and then start the combined static app and API with `npm start`.
 
+## Deploy the frontend to Vercel
+
+The Vercel frontend needs a reachable API. Vercel's static frontend deployment does not run this project's persistent Node/SQLite API, so requests such as account creation return a Vercel 404 until an API host is configured.
+
+This project includes a Render Blueprint in `render.yaml` for the API. It runs the existing Node server with a persistent disk for the SQLite database and uploaded files. A Render plan that supports persistent disks is required; the disk is mounted at `/var/data`.
+
+1. Deploy the project to Vercel with the Vercel project root set to `placement-platform`, build command `npm run build`, and output directory `dist`.
+2. Deploy `render.yaml` as a Blueprint in Render. Set `CORS_ORIGIN` to the exact Vercel site origin, for example `https://your-project.vercel.app` (no trailing slash). Include any custom domain origins as a comma-separated list.
+3. After the Render service is available, set the Vercel environment variable `VITE_API_BASE_URL` to the Render service origin, for example `https://placement-platform-api.onrender.com`. Do not add `/api`; the frontend adds it automatically. Redeploy the Vercel project after changing the variable.
+4. Verify the API at `https://<your-render-service>.onrender.com/api/health`, then try creating a student account on the Vercel site.
+
+The API uses the configured `DATABASE_PATH`; uploaded resources are stored alongside that database on the persistent disk. Configure production coordinator credentials and replace or remove demonstration seed accounts before opening the site to students.
+
 ## Demo access
 
 | Role | Email | Password |

@@ -5,10 +5,14 @@ import { readFile, stat, unlink, writeFile } from 'node:fs/promises'
 import { dirname, extname, resolve } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
-const port = Number(process.env.API_PORT || 3001)
+const port = Number(process.env.PORT || process.env.API_PORT || 3001)
 const databasePath = resolve(process.env.DATABASE_PATH || 'data/placement.db')
 const uploadsDirectory = resolve(dirname(databasePath), 'uploads')
 const staticDirectory = resolve('dist')
+const configuredCorsOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
 mkdirSync(dirname(databasePath), { recursive: true })
 mkdirSync(uploadsDirectory, { recursive: true })
 
@@ -349,6 +353,22 @@ function jsonResponse(response, status, value) {
   response.end(JSON.stringify(value))
 }
 
+function applyCors(request, response) {
+  const origin = request.headers.origin
+  if (!origin) return true
+
+  const localDevelopmentOrigin = configuredCorsOrigins.length === 0
+    && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)
+  if (!configuredCorsOrigins.includes(origin) && !localDevelopmentOrigin) return false
+
+  response.setHeader('Access-Control-Allow-Origin', origin)
+  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+  response.setHeader('Access-Control-Allow-Headers', 'Accept, Authorization, Content-Type')
+  response.setHeader('Access-Control-Max-Age', '86400')
+  response.setHeader('Vary', 'Origin')
+  return true
+}
+
 async function serveStatic(pathname, method, response) {
   let decodedPath
   try {
@@ -680,6 +700,14 @@ function resourceMetadata(row) {
 
 const server = createServer(async (request, response) => {
   try {
+    if (!applyCors(request, response)) {
+      return jsonResponse(response, 403, { error: 'Request origin is not allowed.' })
+    }
+    if (request.method === 'OPTIONS') {
+      response.writeHead(204)
+      return response.end()
+    }
+
     const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`)
     const pathname = url.pathname
     const method = request.method || 'GET'
@@ -1257,7 +1285,7 @@ const server = createServer(async (request, response) => {
   }
 })
 
-server.listen(port, '127.0.0.1', () => {
+server.listen(port, '0.0.0.0', () => {
   console.log(`Placement API listening on http://127.0.0.1:${port}`)
   console.log(`SQLite database: ${databasePath}`)
 })

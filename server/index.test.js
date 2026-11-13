@@ -38,7 +38,12 @@ before(async () => {
   baseUrl = `http://127.0.0.1:${port}`
   serverProcess = spawn(process.execPath, ['server/index.js'], {
     cwd: process.cwd(),
-    env: { ...process.env, API_PORT: String(port), DATABASE_PATH: join(temporaryDirectory, 'test.db') },
+    env: {
+      ...process.env,
+      API_PORT: String(port),
+      DATABASE_PATH: join(temporaryDirectory, 'test.db'),
+      CORS_ORIGIN: 'https://frontend.example',
+    },
     stdio: 'ignore',
   })
 
@@ -61,6 +66,29 @@ after(async () => {
     await new Promise((resolve) => serverProcess.once('exit', resolve))
   }
   if (temporaryDirectory) await rm(temporaryDirectory, { recursive: true, force: true })
+})
+
+test('API supports the configured frontend origin and rejects other cross-origin requests', async () => {
+  const preflight = await api('/auth/register', {
+    method: 'OPTIONS',
+    raw: true,
+    headers: {
+      Origin: 'https://frontend.example',
+      'Access-Control-Request-Method': 'POST',
+      'Access-Control-Request-Headers': 'authorization,content-type',
+    },
+  })
+  assert.equal(preflight.status, 204)
+  assert.equal(preflight.headers.get('access-control-allow-origin'), 'https://frontend.example')
+  assert.match(preflight.headers.get('access-control-allow-headers'), /Authorization/i)
+
+  const rejectedOrigin = await api('/auth/register', {
+    method: 'OPTIONS',
+    raw: true,
+    headers: { Origin: 'https://untrusted.example' },
+  })
+  assert.equal(rejectedOrigin.status, 403)
+  assert.equal(rejectedOrigin.headers.get('access-control-allow-origin'), null)
 })
 
 test('student and placement-cell workflows persist and enforce access rules', async () => {

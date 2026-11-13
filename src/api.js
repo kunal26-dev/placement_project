@@ -1,4 +1,7 @@
-const API_BASE = '/api'
+const configuredApiBase = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '')
+const API_BASE = configuredApiBase
+  ? configuredApiBase.endsWith('/api') ? configuredApiBase : `${configuredApiBase}/api`
+  : '/api'
 
 function errorMessage(value, fallback) {
   if (typeof value === 'string' && value.trim()) return value
