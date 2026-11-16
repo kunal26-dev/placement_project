@@ -6,16 +6,12 @@ services:
     buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
-    disk:
-      name: placement-platform-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: 22.13.0
-      - key: API_PORT
-        value: 10000
-      - key: DATABASE_PATH
-        value: /var/data/placement.db
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DATABASE
+        value: placement_platform
       - key: CORS_ORIGIN
         sync: false

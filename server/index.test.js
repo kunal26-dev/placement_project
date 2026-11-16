@@ -1,14 +1,12 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { after, before, test } from 'node:test'
-import { mkdtemp, rm } from 'node:fs/promises'
 import { createServer } from 'node:net'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { MongoMemoryServer } from 'mongodb-memory-server'
 
 let serverProcess
 let baseUrl
-let temporaryDirectory
+let mongoServer
 let studentToken
 let adminToken
 
@@ -33,7 +31,7 @@ async function api(path, { token, raw = false, ...options } = {}) {
 }
 
 before(async () => {
-  temporaryDirectory = await mkdtemp(join(tmpdir(), 'placement-platform-test-'))
+  mongoServer = await MongoMemoryServer.create()
   const port = await availablePort()
   baseUrl = `http://127.0.0.1:${port}`
   serverProcess = spawn(process.execPath, ['server/index.js'], {
@@ -41,7 +39,8 @@ before(async () => {
     env: {
       ...process.env,
       API_PORT: String(port),
-      DATABASE_PATH: join(temporaryDirectory, 'test.db'),
+      MONGODB_URI: mongoServer.getUri(),
+      MONGODB_DATABASE: 'placement_platform_test',
       CORS_ORIGIN: 'https://frontend.example',
     },
     stdio: 'ignore',
@@ -65,7 +64,7 @@ after(async () => {
     serverProcess.kill()
     await new Promise((resolve) => serverProcess.once('exit', resolve))
   }
-  if (temporaryDirectory) await rm(temporaryDirectory, { recursive: true, force: true })
+  if (mongoServer) await mongoServer.stop()
 })
 
 test('API supports the configured frontend origin and rejects other cross-origin requests', async () => {
